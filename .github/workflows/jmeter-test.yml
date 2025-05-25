@@ -1,0 +1,41 @@
+name: Run JMeter Load Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  jmeter-load-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: ☕ Set up Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: 🧪 Install JMeter
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jmeter
+
+    - name: 🚀 Run JMeter Test
+      run: |
+        jmeter -n -t OrangeHRM_Test.jmx -l results.jtl -e -o html-report
+
+    - name: 📤 Upload .jtl Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: jmeter-results
+        path: results.jtl
+
+    - name: 📁 Upload HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: jmeter-html-report
+        path: html-report

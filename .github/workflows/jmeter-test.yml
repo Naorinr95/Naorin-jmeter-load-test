@@ -5,37 +5,46 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  JMETER_VERSION: 5.6.3
+
 jobs:
   jmeter-load-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-    - name: 📥 Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: ☕ Set up Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'temurin'
-        java-version: '11'
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-    - name: 🧪 Install JMeter
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jmeter
+      - name: Install JMeter ${{ env.JMETER_VERSION }}
+        run: |
+          curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" -o jmeter.tgz
+          tar -xzf jmeter.tgz
+          echo "$PWD/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"
 
-    - name: 🚀 Run JMeter Test
-      run: |
-        jmeter -n -t OrangeHRM_Test.jmx -l results.jtl -e -o html-report
+      - name: Run JMeter test
+        run: |
+          rm -rf results.jtl html-report
+          jmeter -n -t OrangeHRM_Test.jmx -l results.jtl -e -o html-report
 
-    - name: 📤 Upload .jtl Results
-      uses: actions/upload-artifact@v4
-      with:
-        name: jmeter-results
-        path: results.jtl
+      - name: Upload .jtl results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-results
+          path: results.jtl
+          if-no-files-found: warn
 
-    - name: 📁 Upload HTML Report
-      uses: actions/upload-artifact@v4
-      with:
-        name: jmeter-html-report
-        path: html-report
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jmeter-html-report
+          path: html-report
+          if-no-files-found: warn

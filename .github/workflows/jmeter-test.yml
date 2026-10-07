@@ -4,13 +4,20 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      threads:
+        description: 'Number of virtual users'
+        required: true
+        default: '100'
 
 env:
   JMETER_VERSION: 5.6.3
+  THREADS: ${{ github.event.inputs.threads || '10' }}
 
 jobs:
   jmeter-load-test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -22,16 +29,41 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install JMeter ${{ env.JMETER_VERSION }}
-        run: |
-          curl -fsSL "https://archive.apache.org/dist/jmeter/binaries/apache-jmeter-${JMETER_VERSION}.tgz" -o jmeter.tgz
-          tar -xzf jmeter.tgz
-          echo "$PWD/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"
+      - name: Cache JMeter
+        id: jmeter-cache
+        uses: actions/cache@v4
+        with:
+          path: apache-jmeter-${{ env.JMETER_VERSION }}
+          key: jmeter-${{ env.JMETER_VERSION }}
 
-      - name: Run JMeter test
+      - name: Download JMeter ${{ env.JMETER_VERSION }}
+        if: steps.jmeter-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 6
+        run: |
+          for base in \
+            https://dlcdn.apache.org/jmeter/binaries \
+            https://downloads.apache.org/jmeter/binaries \
+            https://archive.apache.org/dist/jmeter/binaries; do
+            echo "Trying $base"
+            if curl -fsSL --connect-timeout 15 --max-time 120 --retry 2 \
+                 "$base/apache-jmeter-${JMETER_VERSION}.tgz" -o jmeter.tgz; then
+              echo "Downloaded from $base"
+              break
+            fi
+            echo "Download failed from $base, trying the next source"
+            rm -f jmeter.tgz
+          done
+          test -s jmeter.tgz
+          tar -xzf jmeter.tgz
+
+      - name: Add JMeter to PATH
+        run: echo "$PWD/apache-jmeter-${JMETER_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Run JMeter test with ${{ env.THREADS }} users
         run: |
           rm -rf results.jtl html-report
-          jmeter -n -t OrangeHRM_Test.jmx -l results.jtl -e -o html-report
+          jmeter -n -t OrangeHRM_Test.jmx -Jthreads="${THREADS}" -Jhttpclient.timeout=30000 \
+            -l results.jtl -e -o html-report
 
       - name: Upload .jtl results
         if: always()

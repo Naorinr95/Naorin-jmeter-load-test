@@ -2,7 +2,7 @@
 
 A small Apache JMeter test plan that sends concurrent requests to the login endpoint of the public OrangeHRM demo site, run in a GitHub Actions pipeline that publishes the JMeter HTML dashboard on every push.
 
-![Run JMeter Load Test](https://github.com/Naorinr95/Naorin-jmeter-load-test/actions/workflows/jmeter-test.yml/badge.svg?branch=main)
+![Run JMeter Load Test](https://github.com/Naorinr95/Naorin-jmeter-load-test/actions/workflows/jmeter-test.yml/badge.svg?branch=main&event=push)
 
 ## What the test does
 
